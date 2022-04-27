@@ -2,7 +2,10 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import _ from 'lodash';
 import {useTheme} from './theme/useTheme';
-import { getFromLS } from './utils/storage';
+import { getFromLS, setToLS } from './utils/storage';
+import { toBeInTheDOM } from "@testing-library/jest-dom";
+
+import {generateRandomPopulation, breedPopulation, calculateDistances } from './utils/population'
 
 const ThemedButton = styled.button`
     border: 0;
@@ -39,49 +42,101 @@ const Header = styled.h2`
 export default (props) => {
     const themesFromStore = getFromLS('all-themes');
     const [data, setData] = useState(themesFromStore.data);
-    const [themes, setThemes] = useState([]);
-    const {setMode} = useTheme();
+    const [themes, setThemes] = useState(Object.keys(data));
+    const [newGeneration, setNewGeneration] = useState([])
+    const [generationNumber, setGenerationNumber] = useState(0)
+    const [currentTheme, setCurrentTheme] = useState(props.currentTheme)
 
-    const themeSwitcher = selectedTheme => {
-        console.log(selectedTheme);
-        setMode(selectedTheme);
-        props.setter(selectedTheme);
-    };
+
+    const upVoteTheme = (selectedTheme, setLiked) => {
+        setLiked(!data[selectedTheme].good_this_generation)
+        data[selectedTheme].good_this_generation = !data[selectedTheme].good_this_generation;
+        setToLS("all-themes", data)
+    }
 
     useEffect(() => {
-        setThemes(_.keys(data));
-    }, [data]);
+        if(generationNumber == 0) return
+        let newData = {}
+        newGeneration.forEach( t => {
+            newData[t.id] = t
+        })
+        console.log("New generation with ", Object.keys(newData).length, " elements")
+        setCurrentTheme(newGeneration[0])
+        setData(newData)
+        setThemes(Object.keys(newData))
+    }, [generationNumber])
 
-    useEffect(() => {
-        props.newTheme &&
-            updateThemeCard(props.newTheme);
-    }, [props.newTheme])
+    /**
+     * 1. Get the user picks, assign score 999999
+     * 2. Calculate the distance of every non-pick from all picks and turn that into a score
+     * 3. sort by Score and only keep the top 50
+     * 4. cross-breed them
+     * 5. generate random missing population
+     */
+    const goToNextGeneration = (themeData) => {
+        let userPicks = Object.values(themeData).filter(t => {
+            return t.good_this_generation == true
+        })
+        let restOfPopulation = Object.values(themeData).filter(t => {
+            return t.good_this_generation != true
+        })
+        let newData = calculateDistances(userPicks, restOfPopulation)
 
-    const updateThemeCard = theme => {
-        const key = _.keys(theme)[0];
-        const updated = {...data, [key]:theme[key]};
-        setData(updated);
+        newData = newData.sort((a, b) => b.score - a.score )
+
+        let top50 = newData.slice(0, 50)
+        let newPopulation = breedPopulation(top50)
+        newPopulation = calculateDistances(userPicks, newPopulation)
+
+        let newRandomPopulation = generateRandomPopulation(75)
+        return [...newPopulation, ...Object.values(newRandomPopulation.data)]
+
+    }
+
+    function resetSelections(_data) {
+        themes.forEach( tId => {
+            _data[tId].good_this_generation = false;
+        })
     }
 
     const ThemeCard = props => {
+        const [liked, setLiked] = useState(false)
         return(
-            <Wrapper style={{backgroundColor: `${data[_.camelCase(props.theme.name)].colors.body}`, 
-                    color: `${data[_.camelCase(props.theme.name)].colors.text}`, 
-                    fontFamily: `${data[_.camelCase(props.theme.name)].font}`}}>
-                    <span>Click on the button to set this theme</span>
-                <ThemedButton onClick={ (theme) => themeSwitcher(props.theme) }
-                    style={{backgroundColor: `${data[_.camelCase(props.theme.name)].colors.button.background}`, 
-                    color: `${data[_.camelCase(props.theme.name)].colors.button.text}`,
-                    fontFamily: `${data[_.camelCase(props.theme.name)].font}`}}>
-                    {props.theme.name}
+            <Wrapper style={{backgroundColor: `${data[(props.theme.id)].colors.body}`, 
+                    color: `${data[(props.theme.id)].colors.text}`, 
+                    fontFamily: `${data[(props.theme.id)].font}`}}>
+                    <span>{props.theme.name}</span>
+                <ThemedButton onClick={ () => upVoteTheme(props.theme.id, setLiked) }
+                    style={{backgroundColor: `${data[(props.theme.id)].colors.button.background}`, 
+                    color: `${data[(props.theme.id)].colors.button.text}`,
+                    fontFamily: `${data[(props.theme.id)].font}`}}>
+                    UpVote me {/*({props.theme.score})*/}
+                    {liked ? '✅' : ''}
                 </ThemedButton>
+                <ThemedButton onClick={ () => console.log(data[props.theme.id]) }
+                    style={{backgroundColor: `${data[(props.theme.id)].colors.button.background}`, 
+                    color: `${data[(props.theme.id)].colors.button.text}`,
+                    fontFamily: `${data[(props.theme.id)].font}`}}>
+                   Get this theme 
+                </ThemedButton>
+
             </Wrapper>
         )
     }
 
+
+
     return (
         <div>
-            <Header>Select a Theme from below</Header>
+            <Header>Generate the ideal theme using your favorite ones from below (Generation #{generationNumber})</Header>
+            <ThemedButton onClick={ () => { 
+                setNewGeneration(goToNextGeneration(data))
+                setGenerationNumber(generationNumber + 1)
+                resetSelections(data)
+            } }
+                    style={{backgroundColor: `${data[(currentTheme.id)].colors.button.background}`, 
+                    color: `${data[(currentTheme.id)].colors.button.text}`,
+                    fontFamily: `${data[(currentTheme.id)].font}`}}>Go to next generation</ThemedButton>
             <Container>
             {
                 themes.length > 0 && 

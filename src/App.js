@@ -32,15 +32,7 @@ function App() {
     setSelectedTheme(theme);
   }, [themeLoaded]);
 
-  const manageDialog = () => {
-    setShowDialog(!showDialog);
-  }
-
-  const createTheme = newTheme => {
-    console.log(newTheme);
-    setShowDialog(false);
-    setNewTheme(newTheme);
-  }
+  
 
   return (
     <>
@@ -50,17 +42,11 @@ function App() {
         <Container style={{fontFamily: selectedTheme.font}}>
           <h1>Theming System</h1>
           <p>
-            Hey, There! It's great when the control is with you. The theming system
-            helps you in building a theme of your choice and apply it to test live. Why
-            wait? Just give it a try.
+            Hey, There! Use the power of Genetic Algorithms. 
+            The theming system helps you in building a theme of your choice and apply it to test live. 
+            Why wait? Just give it a try.
           </p>
-          <button className="btn" onClick={ manageDialog }>Create a Theme</button>
-          <Dialog 
-            header="Create a Theme"
-            body={ <CreateThemeContent create={ createTheme }/> }
-            open={ showDialog } 
-            callback = { manageDialog }/>
-          <ThemeSelector setter={ setSelectedTheme } newTheme={ newTheme }/>
+          <ThemeSelector setter={ setSelectedTheme } currentTheme={selectedTheme}/>
         </Container>
       </ThemeProvider>
     }

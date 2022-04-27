@@ -4,10 +4,12 @@ import _ from 'lodash';
 
 export const useTheme = () => {
     const themes = getFromLS('all-themes');
-    const [theme, setTheme] = useState(themes.data.light);
+    let firstTheme = Object.keys(themes.data)[0]
+    const [theme, setTheme] = useState(themes.data[firstTheme]);
     const [themeLoaded, setThemeLoaded] = useState(false);
 
     const setMode = mode => {
+        console.log("set mode called with ", mode)
         setToLS('theme', mode)
         setTheme(mode);
     };
@@ -19,7 +21,7 @@ export const useTheme = () => {
 
     useEffect(() => {
         const localTheme = getFromLS('theme');
-        localTheme ? setTheme(localTheme) : setTheme(themes.data.light);
+        localTheme ? setTheme(localTheme) : setTheme(themes.data[firstTheme]);
         setThemeLoaded(true);
     }, []);
     

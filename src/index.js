@@ -4,10 +4,11 @@ import App from './App';
 
 import * as themes from './theme/schema.json';
 import { setToLS } from './utils/storage';
+import {generateRandomPopulation} from './utils/population'
 
 const Index = () => {
-  console.log(themes.default);
-  setToLS('all-themes', themes.default);
+  setToLS('all-themes', generateRandomPopulation())
+  //setToLS('all-themes', themes.default);
 
   return(
     <App />
